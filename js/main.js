@@ -22,13 +22,13 @@
           var expressed = attrArray[5]; //initial attribute loaded on map and charts
 
           const waterSet = new Set (
-              ["Provisionally Impaired Water Bodies", 
+              ["Provisionally Impaired Water Bodies",
               "Drinking Water Contaminants Exceeding Federal Limit"]);
           const wasteSet = new Set (
-              ["Active VRP Sites", 
-              "Hazardous Waste Large Quantity Generators", 
-              "Hazardous Waste Remediation Sites", 
-              "Leaking UST Sites", 
+              ["Active VRP Sites",
+              "Hazardous Waste Large Quantity Generators",
+              "Hazardous Waste Remediation Sites",
+              "Leaking UST Sites",
               "Superfund Sites"]);
           const demSet = new Set (
               ["% Registered as Democratic",
@@ -37,10 +37,27 @@
               "Average Household Income",
               "Population"]);
 
+          // This is the name of a data- attribute on SVG elements which stores
+          // the JSON-encoded original style parameters of element it's attached
+          // to. The getStyle() helper method uses this to get the original
+          // settings for element styles (ignoring any temporary modifications
+          // like highlighting).
+          //
+          // The original code used a <desc> child element inside SVG to store
+          // this.  This <desc> approach ran into issues on updates as it
+          // required carefully preserving the element when updating SVG
+          // contents. An attribute approach is more resiliant to
+          // modifications accidentally deleting our JSON.
+          //
+          // FYI: data-* attributes are not used by the browser, can contain
+          // arbitrary strings, and can have any name after the data- prefix.
+          // See: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/data-*
+          const ORIG_STYLE_ATTR_NAME = 'data-orig-style-desc';
+
           //pseudo-global height and width based on window size
           var mapWidth = 0;
             if(window.innerWidth <= 800) {mapWidth = 800*0.425}
-              else if(window.innerWidth >= 1400) {mapWidth = 600} 
+              else if(window.innerWidth >= 1400) {mapWidth = 600}
               else {mapWidth = window.innerWidth*0.425};
           var mapHeight = mapWidth;
 
@@ -77,7 +94,7 @@
 
       function callback(data){
           var csvData = data[0], counties = data[1], mexico = data[2], states = data[3];
-          
+
           /*console.log(csvData);
           console.log(counties);  //helpful to log these to confirm object name
           console.log(mexico);    //object name used below in topojson.feature()
@@ -134,7 +151,7 @@
       for (var a=0; a < azCounties.length; a++){
         var geojsonProps = azCounties[a].properties; //the current region geojson properties
         var geojsonKey = geojsonProps.NAME; //the geojson primary key
-        
+
         //where primary keys match, transfer csv data to geojson properties object
         if (geojsonKey == csvKey){
           //assign all attributes and values
@@ -165,7 +182,7 @@
     //unique scale for Population, otherwise linear
     if (expressed == "Population") var yScale = d3.scaleLog([1,mapHeight],[0,yMax/30000]);
     else var yScale = d3.scaleLinear().range([0,mapHeight]).domain([0,yMax*1.1]);
-    
+
     return yScale;
   };
 
@@ -181,7 +198,7 @@
     } else {
       var colorClasses = ["#f2f0f7", "#dadaeb", "#bcbddc", "#9e9ac8", "#756bb1"];
     }
-    
+
     //create color scale generator
     var colorScale = d3.scaleQuantile().range(colorClasses);
     //assign array of expressed values as scale domain
@@ -207,7 +224,8 @@
         .on("mousemove", moveLabel);
 
     //building description element for enumeration units
-    //var desc = mapCounties.append("desc").text('{"stroke": "#333", "stroke-width": "2px"}');
+    mapCounties.attr(ORIG_STYLE_ATTR_NAME,
+                     '{"stroke": "#333", "stroke-width": "2px"}');
   };
 
   //function to create coordinated bar chart
@@ -246,14 +264,14 @@
         .on("mouseover", function(event, d){highlight(d);})
         .on("mouseout", function(event, d){dehighlight(d)})
         .on("mousemove", moveLabel);
-        
+
     updateChart(chartTitle, bars, numbers, csvData.length, colorScale, yScale);
 
     //building description element for bars, coincidentally the same as enumeration units
-    //var desc = bars.append("desc").text('{"stroke": "#333", "stroke-width": "2px"}');
+    bars.attr(ORIG_STYLE_ATTR_NAME, '{"stroke": "#333", "stroke-width": "2px"}');
 
     //building description element for numbers because numbers are on bars
-    //var desc = numbers.append("desc").text('{"stroke": "none", "stroke-width": "2px"}');
+    numbers.attr(ORIG_STYLE_ATTR_NAME, '{"stroke": "none", "stroke-width": "2px"}');
 
   };
 
@@ -298,7 +316,7 @@
         .duration(800)
         .style("fill", function (d) {
         var value = d.properties[expressed];
-        if (value >= 0) {return colorScale(d.properties[expressed]);} 
+        if (value >= 0) {return colorScale(d.properties[expressed]);}
           else {return "#ccc";}
         });
 
@@ -324,7 +342,7 @@
   };
 
   function updateChart(chartTitle, bars, numbers, length, colorScale, yScale) {
-    
+
     //update Title for chart
     chartTitle.text(function(d){
         var aftertitle = " in Each County"
@@ -347,7 +365,7 @@
           if (value >= 0) {return colorScale(value);}
             else {return "#ccc";}
         });
-        
+
     //update numbers
     numbers.attr("x", function (d, i) {
           var fraction = mapWidth / length;
@@ -363,7 +381,7 @@
         .attr("y", function(d){
           var numY = 0;
           //compare bar height vs num font size
-          if (yScale(parseFloat(d[expressed])) <= 20 ) 
+          if (yScale(parseFloat(d[expressed])) <= 20 )
             {numY = mapHeight - yScale(parseFloat(d[expressed])) - 5 } //puts numbers above bar
           else {numY = mapHeight - yScale(parseFloat(d[expressed])) + 18;} //N can be adjusted
           return numY;
@@ -375,8 +393,8 @@
             return writeMode;
         })
         .text(function(d){
-          return parseInt(d[expressed]) //clears desc object in numbers?
-        }); 
+          return parseInt(d[expressed])
+        });
 
   };
 
@@ -401,41 +419,20 @@
 
   //function to reset the element style on mouseout
   function dehighlight(props) {
-    
-        var selected = d3
-          .selectAll(".AZ." + props.NAME)
-          .style("stroke", "#333")
-          .style("stroke-width", "2px");
-    
-        var selectedBars = d3
-          .selectAll(".bars." + props.NAME)
-          .style("stroke", "#333" )
-          .style("stroke-width", "2px");
-        
-        var selectedNumbers = d3
-          .selectAll(".numbers." + props.NAME)
-          .style("stroke", "none" )
-          .style("stroke-width", "0px");
-
-    /* code from lab module but I was not able to get getStyle to work
-    var selected = d3
-        .selectAll("." + props.NAME)
-        .style("stroke", function () {
-            return getStyle(this, "stroke");
-        })
-        .style("stroke-width", function () {
-            return getStyle(this, "stroke-width");
-        });
+    d3.selectAll("." + props.NAME)
+      .style("stroke", function () {
+          return getStyle(this, "stroke");
+      })
+      .style("stroke-width", function () {
+          return getStyle(this, "stroke-width");
+      });
 
     function getStyle(element, styleName) {
-        var styleText = d3.select(element).select("desc").text();
-        
+        var styleText = d3.select(element).attr(ORIG_STYLE_ATTR_NAME);
         var styleObject = JSON.parse(styleText);
-
         return styleObject[styleName];
     }
-    */
-    
+
     //remove info label
     d3.select(".infolabel").remove();
   }
@@ -476,9 +473,9 @@
         y2 = event.clientY +25;
 
     //horizontal label coordinate, testing for overflow
-    var x = event.clientX > window.innerWidth - labelWidth - 20 ? x2 : x1; 
+    var x = event.clientX > window.innerWidth - labelWidth - 20 ? x2 : x1;
     //vertical label coordinate, testing for overflow
-    var y = event.clientY < 75 ? y2 : y1; 
+    var y = event.clientY < 75 ? y2 : y1;
 
     d3.select(".infolabel")
         .style("left", x + "px")
